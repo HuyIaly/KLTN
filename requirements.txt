@@ -1,0 +1,13 @@
+# Nếu có GPU: cài torch bản CUDA theo pytorch.org TRƯỚC, rồi mới pip install -r requirements.txt
+ultralytics>=8.3.0
+pymupdf>=1.23
+numpy
+pillow>=10.1
+pyyaml
+easyocr>=1.7          # OCR mặc định (hỗ trợ tiếng Việt, cài bằng pip)
+gradio>=4.40
+huggingface_hub       # tải trọng số DocLayNet (training/download_doclaynet.py)
+
+# Tuỳ chọn
+# pytesseract         # nếu dùng Tesseract (cần cài Tesseract + gói ngôn ngữ vie)
+# docx2pdf            # Windows: đổi DOCX->PDF bằng MS Word khi không có LibreOffice

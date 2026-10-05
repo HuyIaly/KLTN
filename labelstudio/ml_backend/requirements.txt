@@ -1,0 +1,4 @@
+label-studio-ml @ git+https://github.com/HumanSignal/label-studio-ml-backend.git
+ultralytics>=8.3.0
+pillow
+python-dotenv
