@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 import numpy as np
 
-BBox = Tuple[float, float, float, float]
+BBox = tuple[float, float, float, float]
 UNASSIGNED = "UNASSIGNED"
 
 
@@ -28,7 +27,7 @@ class Line:
 class Page:
     index: int
     image: np.ndarray            # RGB uint8 (H, W, 3)
-    zoom: Optional[float] = None  # pixel / point (chỉ có với PDF)
+    zoom: float | None = None  # pixel / point (chỉ có với PDF)
     has_text_layer: bool = False
 
     @property
@@ -46,9 +45,9 @@ class Region:
     label: str
     bbox: BBox                    # bbox sau khi "snap" theo chữ (nếu bật)
     score: float
-    det_bbox: Optional[BBox] = None  # bbox gốc YOLO trả về
-    words: List[Word] = field(default_factory=list)
-    lines: List[Line] = field(default_factory=list)
+    det_bbox: BBox | None = None  # bbox gốc YOLO trả về
+    words: list[Word] = field(default_factory=list)
+    lines: list[Line] = field(default_factory=list)
     source: str = ""              # text_layer | ocr | ocr_fallback | none
     order: int = -1
 
@@ -59,7 +58,7 @@ class Region:
     @property
     def text(self) -> str:
         from .postprocess import join_lines
-        return join_lines([l.text for l in self.lines])
+        return join_lines([line.text for line in self.lines])
 
 
 @dataclass
@@ -67,19 +66,19 @@ class Section:
     """Một mục logic sau khi nối các vùng cùng nhãn (có thể trải qua nhiều trang)."""
     id: int
     label: str
-    parts: List[Region]
+    parts: list[Region]
 
     @property
-    def lines(self) -> List[Line]:
-        return [l for r in self.parts for l in r.lines]
+    def lines(self) -> list[Line]:
+        return [line for r in self.parts for line in r.lines]
 
     @property
     def text(self) -> str:
         from .postprocess import join_lines
-        return join_lines([l.text for l in self.lines])
+        return join_lines([line.text for line in self.lines])
 
     @property
-    def pages(self) -> List[int]:
+    def pages(self) -> list[int]:
         return sorted({r.page for r in self.parts})
 
     @property

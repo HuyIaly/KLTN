@@ -42,7 +42,7 @@ def main():
                  "     python -m venv D:\\envs\\lsml\n"
                  "     D:\\envs\\lsml\\Scripts\\python -m pip install -r labelstudio\\ml_backend\\requirements.txt")
 
-    check = subprocess.run([args.python, "-c", "import label_studio_ml.api"], capture_output=True)
+    check = subprocess.run([args.python, "-c", "import label_studio_ml.api"], capture_output=True, check=False)
     if check.returncode != 0:
         sys.exit("❌ Môi trường chưa có label-studio-ml v2. Cài bằng:\n"
                  f'"{args.python}" -m pip install -r labelstudio\\ml_backend\\requirements.txt')

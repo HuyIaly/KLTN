@@ -7,7 +7,7 @@ from __future__ import annotations
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 from PIL import Image
 
@@ -30,7 +30,7 @@ class PipelineConfig:
     iou: float = 0.5
     text_mode: str = "auto"            # auto | text_layer | ocr
     ocr_fallback_empty: bool = True    # trang có text layer nhưng vùng rỗng -> OCR crop
-    skip_ocr_labels: Tuple[str, ...] = ("PHOTO", "AVATAR", "IMAGE", "LOGO")
+    skip_ocr_labels: tuple[str, ...] = ("PHOTO", "AVATAR", "IMAGE", "LOGO")
     min_ioa: float = 0.5
     snap_boxes: bool = True
     snap_pad: float = 4.0
@@ -45,11 +45,11 @@ class PipelineConfig:
 class PipelineResult:
     source: str
     weights: str
-    pages: List[Page]
-    regions: List[Region]             # theo thứ tự đọc, UNASSIGNED ở cuối mỗi trang
-    sections: List[Section]
+    pages: list[Page]
+    regions: list[Region]             # theo thứ tự đọc, UNASSIGNED ở cuối mỗi trang
+    sections: list[Section]
     config: PipelineConfig
-    timings: Dict[str, float] = field(default_factory=dict)
+    timings: dict[str, float] = field(default_factory=dict)
 
     # ------------------------------------------------------------------ export
     def to_dict(self, include_lines: bool = True) -> dict:
@@ -58,8 +58,8 @@ class PipelineResult:
                  "bbox": [round(v, 1) for v in r.bbox], "det_bbox": [round(v, 1) for v in r.det_bbox],
                  "source": r.source, "text": r.text}
             if include_lines:
-                d["lines"] = [{"text": l.text, "bbox": [round(v, 1) for v in l.bbox],
-                               "conf": round(l.conf, 3)} for l in r.lines]
+                d["lines"] = [{"text": line.text, "bbox": [round(v, 1) for v in line.bbox],
+                               "conf": round(line.conf, 3)} for line in r.lines]
             return d
 
         return {
@@ -90,18 +90,18 @@ class PipelineResult:
                 out.append(f"_Trang {r.page + 1}:_  \n" + r.text.replace("\n", "  \n"))
         return "\n".join(out)
 
-    def annotated_images(self) -> List[Image.Image]:
+    def annotated_images(self) -> list[Image.Image]:
         return [draw_regions(p.image, [r for r in self.regions if r.page == p.index]) for p in self.pages]
 
 
 class CVLayoutPipeline:
-    def __init__(self, weights, device: Optional[str] = None, imgsz: int = 1024,
+    def __init__(self, weights, device: str | None = None, imgsz: int = 1024,
                  ocr_engine: str = "easyocr", ocr_langs: Sequence[str] = ("vi", "en"),
-                 tesseract_cmd: Optional[str] = None, detector: Optional[LayoutDetector] = None):
+                 tesseract_cmd: str | None = None, detector: LayoutDetector | None = None):
         self.detector = detector or LayoutDetector(weights, device=device, imgsz=imgsz)
         self.weights = str(weights)
         self.ocr_engine, self.ocr_langs, self.tesseract_cmd = ocr_engine, tuple(ocr_langs), tesseract_cmd
-        self._ocr: Optional[BaseOCR] = None
+        self._ocr: BaseOCR | None = None
 
     @property
     def ocr(self) -> BaseOCR:
@@ -110,14 +110,14 @@ class CVLayoutPipeline:
         return self._ocr
 
     # ------------------------------------------------------------------ steps
-    def _page_words(self, doc: NormalizedDocument, page: Page, cfg: PipelineConfig) -> Tuple[List[Word], str]:
+    def _page_words(self, doc: NormalizedDocument, page: Page, cfg: PipelineConfig) -> tuple[list[Word], str]:
         if cfg.text_mode != "ocr" and page.has_text_layer and doc.pdf is not None:
             return text_layer_words(doc.pdf[page.index], page.zoom), "text_layer"
         if cfg.text_mode == "text_layer":
             return [], "none"
         return self.ocr.read(page.image), "ocr"
 
-    def run(self, path, cfg: Optional[PipelineConfig] = None) -> PipelineResult:
+    def run(self, path, cfg: PipelineConfig | None = None) -> PipelineResult:
         cfg = cfg or PipelineConfig()
         timings = {"normalize": 0.0, "layout": 0.0, "extract": 0.0, "postprocess": 0.0}
 
@@ -125,7 +125,7 @@ class CVLayoutPipeline:
         doc = load_document(path, dpi=cfg.dpi, max_pages=cfg.max_pages)
         timings["normalize"] = time.perf_counter() - t
 
-        ordered: List[Region] = []
+        ordered: list[Region] = []
         try:
             for page in doc.pages:
                 t = time.perf_counter()

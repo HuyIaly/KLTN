@@ -38,7 +38,7 @@ class CVLayoutBackend(LabelStudioMLBase):
 
     def setup(self):
         w = str(active_weights())
-        if os.path.exists(w):
+        if Path(w).exists():
             self.set("model_version", CACHE.version(w))
 
     def _image_path(self, url: str, task_id) -> str:

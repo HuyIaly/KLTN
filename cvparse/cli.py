@@ -24,7 +24,7 @@ def _defaults():
         import config
         return dict(weights=str(config.active_weights()), imgsz=config.IMGSZ, dpi=config.RENDER_DPI,
                     out=str(config.BASE_DIR / "outputs"), device=config.auto_device())
-    except Exception:  # noqa: BLE001
+    except ImportError:  # running without the project's config.py
         return dict(weights=None, imgsz=1024, dpi=200, out="outputs", device=None)
 
 

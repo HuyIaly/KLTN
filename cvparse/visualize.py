@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import zlib
 from functools import lru_cache
-from typing import List
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -33,7 +32,7 @@ def _font(size: int):
         return ImageFont.load_default()
 
 
-def draw_regions(image: np.ndarray, regions: List[Region]) -> Image.Image:
+def draw_regions(image: np.ndarray, regions: list[Region]) -> Image.Image:
     im = Image.fromarray(image).convert("RGB")
     draw = ImageDraw.Draw(im, "RGBA")
     font = _font(max(14, im.width // 75))

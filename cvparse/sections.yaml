@@ -1,0 +1,120 @@
+# Section heading dictionary for the direct-PDF branch (cvparse/pdf_layout.py).
+# Keywords are matched after normalization: NFC -> strip accents -> lowercase -> keep [a-z0-9 ].
+# So write them without worrying about accents/case ("hoc van" == "Học vấn").
+# Combined headings ("Học vấn & Chứng chỉ") take the label of the keyword that appears first.
+
+heading:
+  max_words: 7          # longer lines are never headings
+  size_margin: 0.5      # pt above body font size to count as "larger"
+  fuzzy_ratio: 0.85     # difflib ratio for misspelled headings (Ngo, Two-Phase CV)
+  column_min_gap: 0.25  # column split must lie in [gap, 1 - gap] of page width
+
+# Lines before the first heading are split into the YOLO classes NAME / JOB_TITLE / CONTACT / SUMMARY.
+header:
+  job_title_max_words: 10  # short line right after the name -> JOB_TITLE
+  summary_min_words: 5     # longer digit-free lines (and the lines after them) -> SUMMARY
+  contact_keywords:        # folded prefixes; email / phone / URL are caught by regex_fields
+    - dia chi
+    - address
+    - ngay sinh
+    - date of birth
+    - dob
+    - gioi tinh
+    - gender
+    - email
+    - phone
+    - sdt
+    - so dien thoai
+    - dien thoai
+    - website
+    - facebook
+    - linkedin
+    - github
+    - zalo
+
+labels:
+  SUMMARY:
+    - summary
+    - profile
+    - about me
+    - objective
+    - career objective
+    - professional summary
+    - gioi thieu
+    - gioi thieu ban than
+    - muc tieu
+    - muc tieu nghe nghiep
+    - tom tat
+    - ve toi
+  CONTACT:
+    - contact
+    - contact information
+    - personal information
+    - personal details
+    - thong tin lien he
+    - lien he
+    - thong tin ca nhan
+  EDUCATION:
+    - education
+    - academic background
+    - educational background
+    - hoc van
+    - trinh do hoc van
+    - qua trinh hoc tap
+  EXPERIENCE:
+    - experience
+    - work experience
+    - working experience
+    - employment history
+    - professional experience
+    - kinh nghiem
+    - kinh nghiem lam viec
+    - qua trinh lam viec
+    - qua trinh cong tac
+    - thuc tap
+    - internship
+    - internships
+  SKILLS:
+    - skills
+    - technical skills
+    - soft skills
+    - competencies
+    - ky nang
+    - chuyen mon
+    - ky nang chuyen mon
+    - ky nang mem
+  CERTIFICATION:
+    - certifications
+    - certificates
+    - licenses
+    - chung chi
+    - chung nhan
+  PROJECT:
+    - projects
+    - personal projects
+    - du an
+    - du an ca nhan
+  ACHIEVEMENT:
+    - achievements
+    - awards
+    - honors
+    - activities
+    - thanh tich
+    - thanh tuu
+    - giai thuong
+    - hoat dong
+  LANGUAGE:
+    - languages
+    - ngoai ngu
+    - ngon ngu
+  REFERENCE:
+    - references
+    - nguoi tham chieu
+    - nguoi gioi thieu
+    - tham khao
+  OTHER:
+    - hobbies
+    - interests
+    - so thich
+    - thong tin them
+    - additional information

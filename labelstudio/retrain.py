@@ -40,10 +40,7 @@ run("training/labelstudio_to_yolo.py", "--export", a.export, "--images-dir", a.i
 run("training/split_dataset.py", "--src", raw, "--dst", ds)
 
 current = FINETUNE_WEIGHTS if FINETUNE_WEIGHTS.exists() else BEST_WEIGHTS
-if a.init == "last" and current.exists():
-    init = current
-else:
-    init = f"{a.arch}.pt"
+init = current if a.init == "last" and current.exists() else f"{a.arch}.pt"
 if FINETUNE_WEIGHTS.exists():  # giữ bản cũ để rollback
     shutil.copy2(FINETUNE_WEIGHTS, WEIGHTS_DIR / f"finetune_before_{stamp}.pt")
 

@@ -5,7 +5,7 @@ import math
 import re
 import unicodedata
 from collections import Counter
-from typing import Dict, List, Sequence
+from collections.abc import Sequence
 
 from .geometry import expand, union
 from .schema import UNASSIGNED, BBox, Line, Region, Section, Word
@@ -28,17 +28,17 @@ def clean_line(text: str) -> str:
 
 
 def join_lines(lines: Sequence[str]) -> str:
-    text = "\n".join(l for l in lines if l)
+    text = "\n".join(s for s in lines if s)
     # nối từ bị gạch nối cuối dòng (chủ yếu CV tiếng Anh): "develop-\nment" -> "development"
     return re.sub(r"(\w)-\n([a-zà-ỹ])", r"\1\2", text)
 
 
 # ----------------------------------------------------------------------------- word -> dòng
-def build_lines(words: List[Word], y_overlap: float = 0.5) -> List[Line]:
+def build_lines(words: list[Word], y_overlap: float = 0.5) -> list[Line]:
     if not words:
         return []
     ws = sorted(words, key=lambda w: ((w.bbox[1] + w.bbox[3]) / 2, w.bbox[0]))
-    groups: List[dict] = []
+    groups: list[dict] = []
     for w in ws:
         h = w.bbox[3] - w.bbox[1]
         target = None
@@ -54,7 +54,7 @@ def build_lines(words: List[Word], y_overlap: float = 0.5) -> List[Line]:
             target["words"].append(w)
             target["bbox"] = union([target["bbox"], w.bbox])
 
-    lines: List[Line] = []
+    lines: list[Line] = []
     for g in groups:
         g_ws = sorted(g["words"], key=lambda w: w.bbox[0])
         text = clean_line(" ".join(w.text for w in g_ws))
@@ -62,7 +62,7 @@ def build_lines(words: List[Word], y_overlap: float = 0.5) -> List[Line]:
             continue
         conf = sum(w.conf for w in g_ws) / len(g_ws)
         lines.append(Line(text, g["bbox"], conf))
-    lines.sort(key=lambda l: (l.bbox[1], l.bbox[0]))
+    lines.sort(key=lambda line: (line.bbox[1], line.bbox[0]))
     return lines
 
 
@@ -74,8 +74,8 @@ def snap_bbox(region: Region, pad: float, w: int, h: int) -> BBox:
 
 
 # ----------------------------------------------------------------------------- thứ tự đọc
-def reading_order(boxes: List[BBox], page_w: float, page_h: float, strategy: str = "x_first",
-                  gap_frac: float = 0.005, shrink: float = 0.03) -> List[int]:
+def reading_order(boxes: list[BBox], page_w: float, page_h: float, strategy: str = "x_first",
+                  gap_frac: float = 0.005, shrink: float = 0.03) -> list[int]:
     """Recursive XY-cut trên các vùng YOLO.
 
     x_first: cắt cột trước (hợp CV 2 cột: đọc hết cột trái rồi cột phải).
@@ -87,7 +87,7 @@ def reading_order(boxes: List[BBox], page_w: float, page_h: float, strategy: str
     gaps = (gap_frac * page_w, gap_frac * page_h)
     axes = (0, 1) if strategy == "x_first" else (1, 0)
 
-    def split(idxs: List[int], axis: int) -> List[List[int]]:
+    def split(idxs: list[int], axis: int) -> list[list[int]]:
         ivs = []
         for i in idxs:
             b = boxes[i]
@@ -106,11 +106,11 @@ def reading_order(boxes: List[BBox], page_w: float, page_h: float, strategy: str
         groups.append(cur)
         return groups
 
-    def merge_column_bands(groups: List[List[int]]) -> List[List[int]]:
+    def merge_column_bands(groups: list[list[int]]) -> list[list[int]]:
         # Cắt ngang có thể chặt 1 khối 2 cột thành nhiều dải (vì khe giữa các mục 2 cột tình cờ
         # thẳng hàng). Gộp lại các dải LIỀN KỀ đều có nhiều cột để đọc hết cột trái rồi cột phải;
         # dải 1 cột (header, mục full-width) vẫn là ranh giới.
-        merged: List[List[int]] = []
+        merged: list[list[int]] = []
         prev_multi = False
         for g in groups:
             multi = len(g) > 1 and len(split(g, 0)) > 1
@@ -121,7 +121,7 @@ def reading_order(boxes: List[BBox], page_w: float, page_h: float, strategy: str
             prev_multi = multi
         return merged if len(merged) > 1 else groups
 
-    def rec(idxs: List[int], depth: int = 0) -> List[int]:
+    def rec(idxs: list[int], depth: int = 0) -> list[int]:
         if len(idxs) <= 1 or depth > 64:
             return sorted(idxs, key=lambda i: (boxes[i][1], boxes[i][0]))
         for axis in axes:
@@ -143,7 +143,7 @@ def _hf_key(text: str) -> str:
     return re.sub(r"\d+", "#", text.lower()).strip()
 
 
-def strip_headers_footers(regions: List[Region], page_heights: Dict[int, int],
+def strip_headers_footers(regions: list[Region], page_heights: dict[int, int],
                           margin: float = 0.07) -> int:
     """Bỏ số trang và dòng lặp lại ở lề trên/dưới của nhiều trang. Trả về số dòng đã bỏ."""
     n_pages = len(page_heights)
@@ -154,31 +154,31 @@ def strip_headers_footers(regions: List[Region], page_heights: Dict[int, int],
 
     counts: Counter = Counter()
     for p in page_heights:
-        keys = {_hf_key(l.text) for r in regions if r.page == p for l in r.lines if in_margin(l, p)}
+        keys = {_hf_key(line.text) for r in regions if r.page == p for line in r.lines if in_margin(line, p)}
         counts.update(keys)
     repeated = {k for k, c in counts.items() if n_pages >= 2 and c >= max(2, math.ceil(0.6 * n_pages))}
 
     removed = 0
     for r in regions:
         keep = []
-        for l in r.lines:
-            if in_margin(l, r.page) and (_hf_key(l.text) in repeated or _PAGE_NUM_RE.match(l.text)):
+        for line in r.lines:
+            if in_margin(line, r.page) and (_hf_key(line.text) in repeated or _PAGE_NUM_RE.match(line.text)):
                 removed += 1
             else:
-                keep.append(l)
+                keep.append(line)
         r.lines = keep
     return removed
 
 
 # ----------------------------------------------------------------------------- nối vùng / nối trang
-def merge_sections(ordered: List[Region], merge_same_page: bool = True,
-                   merge_cross_page: bool = True) -> List[Section]:
+def merge_sections(ordered: list[Region], merge_same_page: bool = True,
+                   merge_cross_page: bool = True) -> list[Section]:
     """`ordered` = vùng của mọi trang theo thứ tự đọc (không gồm UNASSIGNED).
 
     - Cùng trang, liền kề, cùng nhãn  -> 1 mục (YOLO tách 1 mục thành nhiều box).
     - Vùng CUỐI trang p và vùng ĐẦU trang p+1 cùng nhãn -> 1 mục (mục bị ngắt trang).
     """
-    sections: List[Section] = []
+    sections: list[Section] = []
     for r in ordered:
         if r.label == UNASSIGNED or not r.lines:
             if r.label != UNASSIGNED and not r.lines:

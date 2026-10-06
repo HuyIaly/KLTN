@@ -9,7 +9,6 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 import numpy as np
 from PIL import Image, ImageOps, ImageSequence
@@ -35,8 +34,8 @@ _SOFFICE_CANDIDATES = [
 class NormalizedDocument:
     source: Path
     kind: str                       # "pdf" | "image"
-    pages: List[Page]
-    pdf: Optional["fitz.Document"] = None
+    pages: list[Page]
+    pdf: fitz.Document | None = None
 
     def close(self) -> None:
         if self.pdf is not None:
@@ -45,7 +44,7 @@ class NormalizedDocument:
 
 
 # ----------------------------------------------------------------------------- DOCX -> PDF
-def _find_soffice() -> Optional[str]:
+def _find_soffice() -> str | None:
     for name in ("soffice", "libreoffice"):
         p = shutil.which(name)
         if p:
@@ -86,7 +85,7 @@ def office_to_pdf(path: Path, out_dir: Path, timeout: int = 180) -> Path:
 
 
 # ----------------------------------------------------------------------------- text layer
-def page_has_text_layer(page: "fitz.Page", min_chars: int = 30, max_bad_ratio: float = 0.1) -> bool:
+def page_has_text_layer(page: fitz.Page, min_chars: int = 30, max_bad_ratio: float = 0.1) -> bool:
     """PDF 'thật' có text layer dùng được. PDF scan / font hỏng (ký tự \ufffd) -> False => OCR."""
     chars = "".join(page.get_text("text").split())
     if len(chars) < min_chars:
@@ -95,7 +94,7 @@ def page_has_text_layer(page: "fitz.Page", min_chars: int = 30, max_bad_ratio: f
     return bad / len(chars) < max_bad_ratio
 
 
-def _pixmap_to_rgb(pix: "fitz.Pixmap") -> np.ndarray:
+def _pixmap_to_rgb(pix: fitz.Pixmap) -> np.ndarray:
     buf = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.stride)
     return buf[:, : pix.width * 3].reshape(pix.height, pix.width, 3).copy()
 
@@ -106,7 +105,7 @@ def _load_pdf(pdf_path: Path, dpi: int, max_pages: int, source: Path) -> Normali
         doc.close()
         raise ValueError(f"PDF có mật khẩu: {source}")
     zoom = dpi / 72.0
-    pages: List[Page] = []
+    pages: list[Page] = []
     for i in range(min(len(doc), max_pages)):
         pg = doc[i]
         pix = pg.get_pixmap(matrix=fitz.Matrix(zoom, zoom), colorspace=fitz.csRGB, alpha=False)
@@ -116,7 +115,7 @@ def _load_pdf(pdf_path: Path, dpi: int, max_pages: int, source: Path) -> Normali
 
 
 def _load_image(path: Path, max_pages: int) -> NormalizedDocument:
-    pages: List[Page] = []
+    pages: list[Page] = []
     with Image.open(path) as im:
         for i, frame in enumerate(ImageSequence.Iterator(im)):  # TIFF nhiều trang
             if i >= max_pages:
@@ -127,7 +126,7 @@ def _load_image(path: Path, max_pages: int) -> NormalizedDocument:
 
 
 def load_document(path, dpi: int = 200, max_pages: int = 10,
-                  work_dir: Optional[Path] = None) -> NormalizedDocument:
+                  work_dir: Path | None = None) -> NormalizedDocument:
     path = Path(path)
     ext = path.suffix.lower()
     if ext in OFFICE_EXTS:

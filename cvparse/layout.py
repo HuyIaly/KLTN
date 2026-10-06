@@ -1,7 +1,6 @@
 """Bước 2 – Layout detection bằng YOLO (Ultralytics): ảnh trang -> các vùng theo mục CV."""
 from __future__ import annotations
 
-from typing import List, Optional
 
 import numpy as np
 from PIL import Image
@@ -11,7 +10,7 @@ from .schema import Region
 
 
 class LayoutDetector:
-    def __init__(self, weights, device: Optional[str] = None, imgsz: int = 1024):
+    def __init__(self, weights, device: str | None = None, imgsz: int = 1024):
         from ultralytics import YOLO  # import trễ để các module khác dùng được khi chưa cài
 
         self.weights = str(weights)
@@ -21,7 +20,7 @@ class LayoutDetector:
         self.names = self.model.names  # {id: name}
 
     def detect(self, image: np.ndarray, conf: float = 0.25, iou: float = 0.5,
-               page_index: int = 0, min_area_frac: float = 1e-4) -> List[Region]:
+               page_index: int = 0, min_area_frac: float = 1e-4) -> list[Region]:
         h, w = image.shape[:2]
         res = self.model.predict(
             Image.fromarray(image),  # PIL -> tránh nhầm RGB/BGR
@@ -37,7 +36,7 @@ class LayoutDetector:
         scores = res.boxes.conf.cpu().numpy()
 
         regions = []
-        for b, c, s in zip(xyxy, cls, scores):
+        for b, c, s in zip(xyxy, cls, scores, strict=True):
             box = tuple(float(v) for v in b)
             if area(box) < min_area_frac * w * h:
                 continue
@@ -45,7 +44,7 @@ class LayoutDetector:
         return remove_contained(regions)
 
 
-def remove_contained(regions: List[Region], thr: float = 0.85) -> List[Region]:
+def remove_contained(regions: list[Region], thr: float = 0.85) -> list[Region]:
     """Bỏ box cùng nhãn nằm gần trọn trong box khác (YOLO đôi khi ra box con trùng mục).
     Box khác nhãn lồng nhau (vd JOB_TITLE trong PROFILE) được giữ lại."""
     keep = []

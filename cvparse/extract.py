@@ -7,7 +7,6 @@ Gán word -> vùng theo tâm/IoA, ưu tiên vùng nhỏ hơn khi lồng nhau (JO
 """
 from __future__ import annotations
 
-from typing import List
 
 import numpy as np
 
@@ -21,10 +20,10 @@ from .ocr import BaseOCR
 from .schema import BBox, Region, Word
 
 
-def text_layer_words(page: "fitz.Page", zoom: float) -> List[Word]:
+def text_layer_words(page: fitz.Page, zoom: float) -> list[Word]:
     # Toạ độ get_text là của trang CHƯA xoay; ảnh render là trang ĐÃ xoay -> nhân rotation_matrix.
     mat = page.rotation_matrix * fitz.Matrix(zoom, zoom)
-    words: List[Word] = []
+    words: list[Word] = []
     for x0, y0, x1, y1, txt, *_ in page.get_text("words"):
         txt = txt.strip()
         if not txt:
@@ -34,10 +33,10 @@ def text_layer_words(page: "fitz.Page", zoom: float) -> List[Word]:
     return words
 
 
-def assign_words(regions: List[Region], words: List[Word],
-                 min_ioa: float = 0.5, tie_margin: float = 0.1) -> List[Word]:
+def assign_words(regions: list[Region], words: list[Word],
+                 min_ioa: float = 0.5, tie_margin: float = 0.1) -> list[Word]:
     """Gán mỗi word cho đúng 1 vùng. Trả về các word không thuộc vùng nào."""
-    leftovers: List[Word] = []
+    leftovers: list[Word] = []
     for w in words:
         cands = []
         for i, r in enumerate(regions):
@@ -53,7 +52,7 @@ def assign_words(regions: List[Region], words: List[Word],
     return leftovers
 
 
-def ocr_crop(engine: BaseOCR, image: np.ndarray, bbox: BBox, pad: int = 6) -> List[Word]:
+def ocr_crop(engine: BaseOCR, image: np.ndarray, bbox: BBox, pad: int = 6) -> list[Word]:
     """OCR riêng một vùng (dùng khi trang có text layer nhưng vùng không có chữ, vd tiêu đề là ảnh)."""
     h, w = image.shape[:2]
     x0, y0, x1, y1 = (int(round(v)) for v in expand(bbox, pad, w, h))

@@ -7,7 +7,6 @@
 """
 from __future__ import annotations
 
-import os
 import re
 import threading
 import uuid
@@ -15,12 +14,12 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 from urllib.parse import parse_qs, unquote, urlparse
 
 from PIL import Image, ImageOps
 
-Detection = Tuple[str, float, float, float, float, float]  # label, x0, y0, x1, y1, score (pixel)
+Detection = tuple[str, float, float, float, float, float]  # label, x0, y0, x1, y1, score (pixel)
 
 
 # ----------------------------------------------------------------------------- label config
@@ -30,7 +29,7 @@ class LSConfig:
     to_name: str               # tên tag Image
     value_key: str             # khoá trong task["data"]
     multipage: bool            # Image dùng valueList (1 task = nhiều trang)
-    labels: List[str] = field(default_factory=list)
+    labels: list[str] = field(default_factory=list)
 
 
 def parse_label_config(xml: str) -> LSConfig:
@@ -46,7 +45,7 @@ def parse_label_config(xml: str) -> LSConfig:
     return LSConfig(
         from_name=rect.get("name"), to_name=to_name,
         value_key=(value_list or value or "").lstrip("$"), multipage=bool(value_list),
-        labels=[l.get("value") for l in rect.iter("Label") if l.get("value")],
+        labels=[lab.get("value") for lab in rect.iter("Label") if lab.get("value")],
     )
 
 
@@ -68,10 +67,10 @@ class YoloCache:
     def __init__(self):
         self._lock = threading.Lock()
         self._model = None
-        self._key: Optional[Tuple[str, float]] = None
+        self._key: tuple[str, float] | None = None
 
     def get(self, weights: str):
-        mtime = os.path.getmtime(weights)
+        mtime = Path(weights).stat().st_mtime
         with self._lock:
             if self._key != (weights, mtime):
                 from ultralytics import YOLO
@@ -81,7 +80,7 @@ class YoloCache:
 
     @staticmethod
     def version(weights: str) -> str:
-        ts = datetime.fromtimestamp(os.path.getmtime(weights)).strftime("%Y%m%d-%H%M")
+        ts = datetime.fromtimestamp(Path(weights).stat().st_mtime).strftime("%Y%m%d-%H%M")
         return f"{Path(weights).stem}@{ts}"
 
 
@@ -89,7 +88,7 @@ CACHE = YoloCache()
 
 
 def detect(model, image: Image.Image, conf: float = 0.25, iou: float = 0.5,
-           imgsz: int = 1024, device: Optional[str] = None) -> List[Detection]:
+           imgsz: int = 1024, device: str | None = None) -> list[Detection]:
     res = model.predict(image, conf=conf, iou=iou, imgsz=imgsz, device=device,
                         agnostic_nms=True, verbose=False)[0]
     if res.boxes is None or len(res.boxes) == 0:
@@ -97,15 +96,15 @@ def detect(model, image: Image.Image, conf: float = 0.25, iou: float = 0.5,
     names = model.names
     out = []
     for b, c, s in zip(res.boxes.xyxy.cpu().numpy(), res.boxes.cls.cpu().numpy(),
-                       res.boxes.conf.cpu().numpy()):
+                       res.boxes.conf.cpu().numpy(), strict=True):
         out.append((str(names[int(c)]), *map(float, b), float(s)))
     return out
 
 
 # ----------------------------------------------------------------------------- -> Label Studio
-def to_ls_results(dets: List[Detection], width: int, height: int, cfg: LSConfig,
-                  item_index: Optional[int] = None,
-                  label_map: Optional[Dict[str, str]] = None) -> Tuple[List[dict], List[float]]:
+def to_ls_results(dets: list[Detection], width: int, height: int, cfg: LSConfig,
+                  item_index: int | None = None,
+                  label_map: dict[str, str] | None = None) -> tuple[list[dict], list[float]]:
     """Trả về (results, scores). Nhãn không có trong label config bị bỏ qua."""
     label_map = label_map or {}
     allowed = set(cfg.labels)
@@ -134,7 +133,7 @@ def to_ls_results(dets: List[Detection], width: int, height: int, cfg: LSConfig,
     return results, scores
 
 
-def task_score(scores: List[float]) -> float:
+def task_score(scores: list[float]) -> float:
     """Điểm task = trung bình score box. LS sắp xếp task theo điểm này -> gán nhãn task
     model kém tự tin trước (active learning thủ công)."""
     return round(sum(scores) / len(scores), 4) if scores else 0.0
@@ -156,7 +155,7 @@ def url_to_name(url: str) -> str:
     return m.group(1) if m else name
 
 
-def resolve_local(url: str, doc_root: Optional[str]) -> Optional[Path]:
+def resolve_local(url: str, doc_root: str | None) -> Path | None:
     q = parse_qs(urlparse(url).query)
     if "d" in q and doc_root:
         p = Path(doc_root) / unquote(q["d"][0])

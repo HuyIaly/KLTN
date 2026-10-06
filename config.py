@@ -54,6 +54,7 @@ IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff"}
 CLASS_NAMES = [
     "NAME", "CONTACT", "SUMMARY", "EDUCATION", "EXPERIENCE", "SKILLS",
     "CERTIFICATION", "PROJECT", "ACHIEVEMENT", "LANGUAGE", "REFERENCE", "OTHER",
+    "JOB_TITLE",  # appended last so ids 0-11 of older weights stay unchanged
 ]
 CLASS_TO_ID = {name: i for i, name in enumerate(CLASS_NAMES)}
 
